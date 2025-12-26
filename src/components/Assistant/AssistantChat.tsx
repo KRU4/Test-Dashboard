@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
 interface Message {
+  id?: string;
   role: 'user' | 'bot';
   message: string;
   timestamp: string;
@@ -27,6 +28,7 @@ export const AssistantChat: React.FC = () => {
     if (messages.length === 0) {
       setMessages([
         {
+          id: `bot_hello_${Date.now()}`,
           role: 'bot',
           message: t('hello'),
           timestamp: new Date().toISOString(),
@@ -47,18 +49,27 @@ export const AssistantChat: React.FC = () => {
 
     const messageText = inputMessage.trim();
     const userMessage: Message = {
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       role: 'user',
       message: messageText,
       timestamp: new Date().toISOString(),
     };
 
-    setMessages([...messages, userMessage]);
+    // Add user message immediately
+    setMessages((prev: Message[]) => {
+      console.log('Adding user message:', userMessage);
+      console.log('Previous messages:', prev);
+      const newMessages = [...prev, userMessage];
+      console.log('New messages array:', newMessages);
+      return newMessages;
+    });
     setInputMessage('');
     setIsLoading(true);
 
     const webhookUrl = getWebhook('assistant');
     if (!webhookUrl) {
       const errorMessage: Message = {
+        id: `bot_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         role: 'bot',
         message: t('webhookNotConfigured'),
         timestamp: new Date().toISOString(),
@@ -159,15 +170,22 @@ export const AssistantChat: React.FC = () => {
       }
 
       const botMessage: Message = {
+        id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         role: 'bot',
         message: botResponseMessage,
         timestamp: (data && data.timestamp) ? data.timestamp : new Date().toISOString(),
       };
 
-      setMessages((prev: Message[]) => [...prev, botMessage]);
+      console.log('Adding bot message:', botMessage);
+      setMessages((prev: Message[]) => {
+        const newMessages = [...prev, botMessage];
+        console.log('Updated messages array:', newMessages);
+        return newMessages;
+      });
     } catch (error) {
       console.error('Chat error details:', error);
       const errorMessage: Message = {
+        id: `bot_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         role: 'bot',
         message: error instanceof Error ? error.message : t('networkError'),
         timestamp: new Date().toISOString(),
@@ -188,6 +206,7 @@ export const AssistantChat: React.FC = () => {
   const clearChat = () => {
     setMessages([
       {
+        id: `bot_hello_${Date.now()}`,
         role: 'bot',
         message: t('hello'),
         timestamp: new Date().toISOString(),
@@ -276,9 +295,9 @@ export const AssistantChat: React.FC = () => {
             ref={chatContainerRef}
             className="flex-1 overflow-y-auto p-4"
           >
-            {messages.map((msg, index) => (
+            {messages.map((msg) => (
               <ChatMessage
-                key={index}
+                key={msg.id || `${msg.role}_${msg.timestamp}`}
                 role={msg.role}
                 message={msg.message}
                 timestamp={msg.timestamp}
